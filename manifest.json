@@ -1,0 +1,26 @@
+{
+  "id": "./",
+  "name": "Private Browser",
+  "short_name": "Private Browser",
+  "description": "検索エンジンを切り替えられるブラウザ風アプリの試作品",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#17191f",
+  "theme_color": "#17191f",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

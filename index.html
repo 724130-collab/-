@@ -1,0 +1,251 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17191f">
+  <link rel="manifest" href="./manifest.json">
+<title>Private Browser</title>
+<style>
+body {
+  margin: 0;
+  background: #17191f;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+header { padding: 18px; }
+h1 { font-size: 22px; }
+#tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  background: #252832;
+  flex-wrap: wrap;
+}
+.tab {
+  padding: 10px;
+  background: #383c48;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.tab.active { background: #626b84; }
+button, input, select {
+  padding: 10px;
+  border: 0;
+  border-radius: 7px;
+  margin: 4px;
+}
+button { cursor: pointer; }
+#search {
+  display: flex;
+  padding: 12px;
+  flex-wrap: wrap;
+}
+
+
+#query { flex: 1; min-width: 140px; }
+main {
+  text-align: center;
+  padding: 45px 15px;
+}
+small { color: #b9c0d0; }
+
+#viewer {
+  width: 100%;
+  height: 65vh;
+  min-height: 350px;
+  border: 1px solid #454b59;
+  border-radius: 10px;
+  background: white;
+}
+
+#pageInfo {
+  overflow-wrap: anywhere;
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🛡 Private Browser</h1>
+  <small>ブラウザ風アプリの試作品</small>
+</header>
+
+<div id="tabs"></div>
+
+<div id="search">
+  <select id="engine">
+    <option value="https://www.google.com/search?q=">Google</option>
+    <option value="https://www.bing.com/search?q=">Bing</option>
+    <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
+  </select>
+  <input id="query" placeholder="検索語句やURL">
+  <button onclick="go()">検索 / 開く</button>
+  <button onclick="newTab()">＋ タブ</button>
+  <button onclick="closeTab()">タブを閉じる</button>
+  <button onclick="goBack()">← 戻る</button>
+　<button onclick="goForward()">進む →</button>
+</div>
+
+
+<main>
+  <h2 id="welcome">プライベートブラウジング</h2>
+  <p id="message">
+    検索語句やURLを入力してページを開こう。
+  </p>
+  <p id="pageInfo"></p>
+
+  <iframe
+    id="viewer"
+    title="Webページ表示領域"
+    src="about:blank"
+    referrerpolicy="no-referrer"
+    sandbox="allow-forms allow-scripts">
+  </iframe>
+</main>
+
+
+<script>
+
+let tabs = [];
+let current = 0;
+
+function newTab() {
+  tabs.push({
+    name: "新しいタブ",
+    query: "",
+    url: "about:blank",
+    history: [],
+    historyIndex: -1
+  });
+
+  current = tabs.length - 1;
+  render();
+}
+
+function render() {
+  const bar = document.getElementById("tabs");
+  bar.replaceChildren();
+
+  tabs.forEach((tab, i) => {
+    const el = document.createElement("button");
+    el.className = "tab" + (i === current ? " active" : "");
+    el.textContent = tab.name;
+    el.onclick = () => {
+      current = i;
+      render();
+    };
+    bar.appendChild(el);
+  });
+
+  document.getElementById("query").value =
+    tabs[current].query;
+
+ const viewer = document.getElementById("viewer");
+
+if (viewer.src !== new URL(tabs[current].url, location.href).href) {
+  viewer.src = tabs[current].url;
+}
+
+  document.getElementById("pageInfo").textContent =
+    tabs[current].url === "about:blank"
+      ? ""
+      : tabs[current].url;
+}
+
+function go() {
+  const text = document.getElementById("query").value.trim();
+  if (!text) return;
+
+  let url = "";
+
+  try {
+    const parsed = new URL(text);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+      url = parsed.href;
+    }
+  } catch (e) {}
+
+  if (!url && /^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(text)) {
+    url = "https://" + text;
+  }
+
+  if (!url) {
+    const engine = document.getElementById("engine").value;
+    url = engine + encodeURIComponent(text);
+  }
+
+  const tab = tabs[current];
+
+  // 戻った後に別のページを開いたら、先の履歴を削除
+  tab.history = tab.history.slice(0, tab.historyIndex + 1);
+  tab.history.push(url);
+  tab.historyIndex = tab.history.length - 1;
+
+  tab.query = text;
+  tab.url = url;
+  tab.name = text.length > 16 ? text.slice(0, 16) + "…" : text;
+
+  render();
+}
+
+function goBack() {
+  const tab = tabs[current];
+
+  if (tab.historyIndex > 0) {
+    tab.historyIndex--;
+    showHistoryPage(tab);
+  }
+}
+
+function goForward() {
+  const tab = tabs[current];
+
+  if (tab.historyIndex < tab.history.length - 1) {
+    tab.historyIndex++;
+    showHistoryPage(tab);
+  }
+}
+
+function showHistoryPage(tab) {
+  tab.url = tab.history[tab.historyIndex];
+
+  document.getElementById("query").value = tab.url;
+  document.getElementById("pageInfo").textContent = tab.url;
+  document.getElementById("viewer").src = tab.url;
+}
+
+function closeTab() {
+  if (tabs.length <= 1) {
+    tabs[0] = {
+      name: "新しいタブ",
+      query: "",
+      url: "about:blank"
+    };
+    current = 0;
+  } else {
+    tabs.splice(current, 1);
+    current = Math.min(current, tabs.length - 1);
+  }
+
+  render();
+}
+
+window.addEventListener("pagehide", () => {
+  tabs = [];
+});
+
+newTab();
+
+</script>
+  <script>
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch((err) => {
+          console.warn("Service worker registration failed:", err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
